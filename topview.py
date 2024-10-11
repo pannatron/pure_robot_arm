@@ -48,6 +48,8 @@ class ArucoDetector(Node):
 
         # Publishers for coordinates and commands
         self.command_pub = self.create_publisher(String, 'serial_commands', 10)
+        self.ai_start_process = self.create_publisher(String, 'ai_start_process', 10)
+
         self.top_view_pub = self.create_publisher(Image, 'top_view_image', 10)
         self.tray_position_pub = self.create_publisher(String, 'tray_positions', 10)
 
@@ -110,8 +112,13 @@ class ArucoDetector(Node):
         self.btn_topview = tk.Button(mode_frame, text="TOPVIEW", command=self.enable_topview_mode)
         self.btn_topview.pack(fill='x', pady=5)
 
-        self.btn_ai_detect = tk.Button(mode_frame, text="AI Detect", command=self.publish_ai_detect)
+        self.btn_ai_detect = tk.Button(mode_frame, text="AI Detect ON", command=self.publish_ai_detect)
         self.btn_ai_detect.pack(fill='x', pady=5)
+
+
+        self.btn_ai_detect_OFF = tk.Button(mode_frame, text="AI Detect OFF", command=self.publish_ai_detect_OFF)
+        self.btn_ai_detect_OFF.pack(fill='x', pady=5)
+
 
         self.btn_manual = tk.Button(mode_frame, text="Manual", command=self.enable_manual_mode)
         self.btn_manual.pack(fill='x', pady=5)
@@ -119,7 +126,6 @@ class ArucoDetector(Node):
         # Create a frame for robot control buttons
         control_frame = tk.LabelFrame(main_frame, text="Robot Control", padx=10, pady=10)
         control_frame.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)
-
         # Add buttons for robot control
         self.btn_sethome = tk.Button(control_frame, text="SETHOME", command=self.set_home)
         self.btn_sethome.pack(fill='x', pady=5)
@@ -165,7 +171,25 @@ class ArucoDetector(Node):
         self.z_entry.pack(fill='x')
         self.z_slider.bind("<Motion>", self.update_z_entry)
         self.z_entry.bind("<Return>", self.update_z_slider)
+        # Create a frame for X-Y Offset Controls
+        offset_frame = tk.LabelFrame(control_frame, text="X-Y Offset Control", padx=10, pady=10)
+        offset_frame.pack(fill='x', pady=5)
 
+        # Entry for X offset with closer buttons
+        tk.Label(offset_frame, text="X Offset").grid(row=0, column=0, padx=5)
+        tk.Button(offset_frame, text="-", command=lambda: self.adjust_offset("x", -1)).grid(row=0, column=1, padx=2)
+        self.x_offset_entry = tk.Entry(offset_frame, width=5)
+        self.x_offset_entry.insert(0, "0")  # Default offset value
+        self.x_offset_entry.grid(row=0, column=2, padx=2)
+        tk.Button(offset_frame, text="+", command=lambda: self.adjust_offset("x", 1)).grid(row=0, column=3, padx=2)
+
+        # Entry for Y offset with closer buttons
+        tk.Label(offset_frame, text="Y Offset").grid(row=1, column=0, padx=5)
+        tk.Button(offset_frame, text="-", command=lambda: self.adjust_offset("y", -1)).grid(row=1, column=1, padx=2)
+        self.y_offset_entry = tk.Entry(offset_frame, width=5)
+        self.y_offset_entry.insert(0, "0")  # Default offset value
+        self.y_offset_entry.grid(row=1, column=2, padx=2)
+        tk.Button(offset_frame, text="+", command=lambda: self.adjust_offset("y", 1)).grid(row=1, column=3, padx=2)
         # Create a frame for tray positions
         tray_frame = tk.LabelFrame(main_frame, text="Tray Position Setting", padx=10, pady=10)
         tray_frame.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)
@@ -216,6 +240,11 @@ class ArucoDetector(Node):
         self.image_canvas = tk.Canvas(topview_frame, width=self.width_px, height=self.height_px, bg="gray")
         self.image_canvas.pack(fill=tk.BOTH, expand=True)
         self.image_canvas.bind("<Button-1>", self.canvas_click)  # Re-bind the canvas click
+        self.image_canvas.bind("<Motion>", self.canvas_hover)  # Bind the hover event
+
+        # Label for displaying mouse hover coordinates
+        self.hover_label = tk.Label(topview_frame, text="Hover Position: X=0, Y=0")
+        self.hover_label.pack(fill='x', pady=5)
 
         # Create a labeled frame for the AI detected image
         ai_frame = tk.LabelFrame(main_frame, text="AI Detected Image", padx=10, pady=10)
@@ -229,6 +258,18 @@ class ArucoDetector(Node):
         self.ui_ready = True
 
         self.root.mainloop()
+    def adjust_offset(self, axis, value):
+        if axis == "x":
+            current_value = int(self.x_offset_entry.get())
+            self.x_offset_entry.delete(0, tk.END)
+            self.x_offset_entry.insert(0, str(current_value + value))
+        elif axis == "y":
+            current_value = int(self.y_offset_entry.get())
+            self.y_offset_entry.delete(0, tk.END)
+            self.y_offset_entry.insert(0, str(current_value + value))
+    def canvas_hover(self, event):
+        # Update the label with the current mouse position on the canvas
+        self.hover_label.config(text=f"Hover Position: X={event.x}, Y={event.y}")
 
     def lock_all_tray_positions(self):
         # Update all tray positions from input fields and publish their values
@@ -258,16 +299,24 @@ class ArucoDetector(Node):
         self.update_button_colors(self.btn_topview)
         self.get_logger().info('TOPVIEW mode enabled. Please click on four points to create homography.')
 
+    def publish_ai_detect_OFF(self):
+        self.ai_detect_mode = False
+        self.topview_mode = False
+        self.manual_mode = False
+        self.tray_setting_mode = None
+
+        self.update_button_colors(self.btn_ai_detect_OFF)
+        self.ai_start_process.publish(String(data="OFF"))
+        self.get_logger().info('AI detection state OFF.')
     def publish_ai_detect(self):
         self.ai_detect_mode = True
         self.topview_mode = False
         self.manual_mode = False
-        self.display_topview = False
         self.tray_setting_mode = None
 
         self.update_button_colors(self.btn_ai_detect)
-        self.command_pub.publish(String(data="AI detection started"))
-        self.get_logger().info('AI detection state published.')
+        self.ai_start_process.publish(String(data="ON"))
+        self.get_logger().info('AI detection state ON.')
 
     def enable_manual_mode(self):
         self.topview_mode = False
@@ -288,7 +337,7 @@ class ArucoDetector(Node):
 
     def pick_command(self):
         self.update_button_colors(self.btn_pick)
-        command_str = "pick>\n"
+        command_str = "pick>\\n"
         self.command_pub.publish(String(data=command_str))
         self.get_logger().info('Pick command sent.')
 
@@ -300,6 +349,7 @@ class ArucoDetector(Node):
         buttons = [
             self.btn_topview,
             self.btn_ai_detect,
+            self.btn_ai_detect_OFF,
             self.btn_manual,
             self.btn_sethome,
             self.btn_pick,
@@ -442,6 +492,13 @@ class ArucoDetector(Node):
             self.z_value = float(self.z_slider.get())
             cm_x = ((self.stored_point[0] - 300) * self.scale_x) * 10
             cm_y = (((self.stored_point[1] - 600) * self.scale_y) * -1) * 10
+            
+            # Apply the offset before sending the command
+            offset_x = float(self.x_offset_entry.get())
+            offset_y = float(self.y_offset_entry.get())
+            cm_x += offset_x
+            cm_y += offset_y
+
             command_str = f"move_to>{cm_x:.2f},{cm_y:.2f},{self.z_value:.2f},90.0>\\n"
             self.command_pub.publish(String(data=command_str))
             self.get_logger().info(f'Sent command: {command_str}')
@@ -453,7 +510,6 @@ class ArucoDetector(Node):
             self.point_label.config(text="Stored Point: None")
         else:
             self.get_logger().warning('No point stored for manual command.')
-
     def update_z_entry(self, event):
         # Update the entry box when slider is moved
         self.z_entry.delete(0, tk.END)
