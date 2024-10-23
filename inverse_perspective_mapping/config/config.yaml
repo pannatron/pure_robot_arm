@@ -1,0 +1,13 @@
+ipm_node:
+  ros__parameters:
+    camera_pos_x: 0
+    camera_pos_y: 0
+    camera_pos_z: 80
+    fov_h: 78.0
+    fov_v: 42.5
+    src_width: 640
+    src_height: 480
+    dst_width: 300
+    dst_height: 300
+    camera_tilt_angle: 0.0
+

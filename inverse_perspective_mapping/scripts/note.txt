@@ -1,0 +1,7 @@
+{'inference_id': 'c8eef942-73d1-4e0f-a1d7-eb4f57d36b60',
+ 'time': 0.03113592600038828, 'image': {'width': 640, 'height': 480},
+  'predictions': [{'x': 347.5, 'y': 103.0, 'width': 51.0, 'height': 46.0,
+   'confidence': 0.9138831496238708, 'class': 'square_L', 'class_id': 3, 
+   'detection_id': 'e5166cbe-d157-4d90-bca5-87c2262468e8'}, 
+   {'x': 407.0, 'y': 104.5, 'width': 50.0, 'height': 61.0, 'confidence': 0.5494397282600403, 'class': 'triangle_L', 'class_id': 6, 'detection_id': '7a875fce-e87f-4451-8b5b-4d94498fb1f3'}, 
+   {'x': 591.5, 'y': 94.5, 'width': 59.0, 'height': 33.0, 'confidence': 0.520000696182251, 'class': 'square_L', 'class_id': 3, 'detection_id': '3ff29657-bc75-457f-af12-faffe1a652fc'}]}
